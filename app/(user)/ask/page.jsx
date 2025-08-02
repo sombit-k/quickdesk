@@ -227,7 +227,7 @@ const AskQuestionPage = () => {
           transition={{ duration: 0.6, delay: 0.2 }}
         >
           <Card className="bg-gradient-to-br from-blue-50 via-sky-50 to-indigo-100 border-blue-200 shadow-2xl overflow-hidden">
-            <CardHeader className="bg-gradient-to-r from-blue-100 to-indigo-100 border-b border-blue-200">
+            <CardHeader className="bg-gradient-to-r from-blue-100 to-indigo-100 border-b border-blue-200 flex items-center justify-center py-6">
               <CardTitle className="text-blue-800 text-xl font-semibold">
                 Create New Ticket
               </CardTitle>
