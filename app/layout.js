@@ -14,10 +14,10 @@ import {
 
 export const metadata = {
   title: {
-    template: '%s | Process List',
-    default: 'Process Manager',
+    template: '%s | QuickDesk',
+    default: 'QuickDesk',
   },
-  description: 'This app helps you organize the process of software Engineering Models.',
+  description: 'Easily manage your support tickets with QuickDesk.',
 };
 
 export default function RootLayout({ children }) {

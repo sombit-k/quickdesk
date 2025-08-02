@@ -11,6 +11,7 @@ import {
     MobileNavMenu,
 } from "@/components/ui/resizable-navbar";
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import {
     SignInButton,
     SignUpButton,
@@ -23,15 +24,15 @@ export function NavbarDemo() {
     const navItems = [
         {
             name: "Dashboard",
-            link: "dashboard",
+            link: "/dashboard",
         },
         {
             name: "All tickets",
-            link: "home",
+            link: "/home",
         },
         {
             name: "Create New Ticket",
-            link: "ask",
+            link: "/ask",
         }
     ];
 
@@ -76,13 +77,13 @@ export function NavbarDemo() {
 
                     <MobileNavMenu isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)}>
                         {navItems.map((item, idx) => (
-                            <a
+                            <Link
                                 key={`mobile-link-${idx}`}
                                 href={item.link}
                                 onClick={() => setIsMobileMenuOpen(false)}
                                 className="relative text-neutral-600 dark:text-neutral-300">
                                 <span className="block">{item.name}</span>
-                            </a>
+                            </Link>
                         ))}
                         <div className="flex w-full flex-col gap-4">
                             <SignedOut>
