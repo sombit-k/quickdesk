@@ -15,7 +15,6 @@ export default async function Footer() {
           <div className="text-center md:text-right text-sm text-gray-400">
             Ticket platform powered by AI &mdash; Built by{" "}
             <a
-              href="https://github.com/sombitk"
               target="_blank"
               rel="noopener noreferrer"
               className="text-blue-400 hover:underline transition-colors duration-200"
