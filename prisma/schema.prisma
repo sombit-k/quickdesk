@@ -1,0 +1,223 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  END_USER
+  SUPPORT_AGENT
+  ADMIN
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum NotificationType {
+  TICKET_CREATED
+  TICKET_UPDATED
+  TICKET_ASSIGNED
+  TICKET_RESOLVED
+  TICKET_CLOSED
+  COMMENT_ADDED
+}
+
+model User {
+  clerkUserId String   @unique
+  id          String   @id @default(uuid())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  name        String
+  email       String   @unique
+  role        Role     @default(END_USER)
+  suspended   Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  avatar      String?
+  
+  // Ticket relations
+  createdTickets    Ticket[] @relation("TicketCreator")
+  assignedTickets   Ticket[] @relation("TicketAssignee")
+  
+  // Comment relations
+  comments          Comment[]
+  
+  // Vote relations
+  votes             Vote[]
+  
+  // Notification relations
+  notifications     Notification[]
+  
+  // Attachment relations
+  attachments       Attachment[]
+  
+  // User preferences
+  emailNotifications Boolean @default(true)
+  
+  @@map("users")
+}
+
+model Category {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  color       String?  // Hex color for UI
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  tickets     Ticket[]
+  
+  @@map("categories")
+}
+
+model Ticket {
+  id          String        @id @default(uuid())
+  subject     String
+  description String
+  status      TicketStatus  @default(OPEN)
+  priority    TicketPriority @default(MEDIUM)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  resolvedAt  DateTime?
+  closedAt    DateTime?
+  
+  // Foreign keys
+  creatorId   String
+  assigneeId  String?
+  categoryId  String
+  
+  // Relations
+  creator     User         @relation("TicketCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  assignee    User?        @relation("TicketAssignee", fields: [assigneeId], references: [id])
+  category    Category     @relation(fields: [categoryId], references: [id])
+  
+  // Related entities
+  comments    Comment[]
+  attachments Attachment[]
+  votes       Vote[]
+  notifications Notification[]
+  
+  // Metrics for performance
+  viewCount   Int          @default(0)
+  upvotes     Int          @default(0)
+  downvotes   Int          @default(0)
+  
+  @@map("tickets")
+  @@index([status])
+  @@index([creatorId])
+  @@index([assigneeId])
+  @@index([categoryId])
+  @@index([createdAt])
+  @@index([priority])
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  content   String
+  isInternal Boolean @default(false) // Internal comments only visible to agents/admins
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Foreign keys
+  ticketId  String
+  authorId  String
+  
+  // Relations
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  
+  // Attachments for comments
+  attachments Attachment[]
+  
+  @@map("comments")
+  @@index([ticketId])
+  @@index([authorId])
+  @@index([createdAt])
+}
+
+model Attachment {
+  id          String   @id @default(uuid())
+  filename    String
+  originalName String
+  mimeType    String
+  size        Int      // File size in bytes
+  url         String   // Storage URL (could be S3, local, etc.)
+  createdAt   DateTime @default(now())
+  
+  // Foreign keys (either ticket or comment)
+  ticketId    String?
+  commentId   String?
+  uploadedById String
+  
+  // Relations
+  ticket      Ticket?  @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  comment     Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  uploadedBy  User     @relation(fields: [uploadedById], references: [id])
+  
+  @@map("attachments")
+  @@index([ticketId])
+  @@index([commentId])
+}
+
+model Vote {
+  id        String   @id @default(uuid())
+  isUpvote  Boolean  // true for upvote, false for downvote
+  createdAt DateTime @default(now())
+  
+  // Foreign keys
+  ticketId  String
+  userId    String
+  
+  // Relations
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Unique constraint to prevent duplicate votes
+  @@unique([ticketId, userId])
+  @@map("votes")
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  type      NotificationType
+  title     String
+  message   String
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+  
+  // Foreign keys
+  userId    String
+  ticketId  String?
+  
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ticket    Ticket?  @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  
+  @@map("notifications")
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
+}
