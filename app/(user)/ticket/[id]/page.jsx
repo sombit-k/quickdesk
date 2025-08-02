@@ -25,7 +25,8 @@ import {
   ExternalLink,
   Shield,
   Eye,
-  Loader2
+  Loader2,
+  X
 } from "lucide-react";
 import { getTicketById, voteOnTicket, replyToTicket, getUserPermissions, closeTicket } from '@/actions/user';
 import { toast } from 'sonner';
@@ -69,6 +70,7 @@ const TicketDetailPage = () => {
 
         setTicketData(ticket);
         setVotes(ticket.upvotes - ticket.downvotes);
+        setUserVote(ticket.userVote); // Set the current user's vote status
         setPermissions(userPerms);
         
         // Check if user has voted (from the votes array)
@@ -331,11 +333,14 @@ const TicketDetailPage = () => {
                     {/* Vote Section */}
                     <div className="flex flex-col items-center gap-2 ml-6">
                       <motion.button
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={() => handleVote('up')}
+                        whileHover={{ scale: permissions.canVote ? 1.1 : 1 }}
+                        whileTap={{ scale: permissions.canVote ? 0.9 : 1 }}
+                        onClick={() => permissions.canVote && handleVote('up')}
+                        disabled={!permissions.canVote}
                         className={`p-2 rounded-full transition-all duration-200 ${
-                          userVote === 'up' 
+                          !permissions.canVote
+                            ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                            : userVote === 'up' 
                             ? 'bg-green-500 text-white shadow-lg' 
                             : 'bg-white/70 text-blue-600 hover:bg-green-50 hover:text-green-600'
                         }`}
@@ -348,11 +353,14 @@ const TicketDetailPage = () => {
                       </div>
                       
                       <motion.button
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={() => handleVote('down')}
+                        whileHover={{ scale: permissions.canVote ? 1.1 : 1 }}
+                        whileTap={{ scale: permissions.canVote ? 0.9 : 1 }}
+                        onClick={() => permissions.canVote && handleVote('down')}
+                        disabled={!permissions.canVote}
                         className={`p-2 rounded-full transition-all duration-200 ${
-                          userVote === 'down' 
+                          !permissions.canVote
+                            ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                            : userVote === 'down' 
                             ? 'bg-red-500 text-white shadow-lg' 
                             : 'bg-white/70 text-blue-600 hover:bg-red-50 hover:text-red-600'
                         }`}
@@ -420,11 +428,30 @@ const TicketDetailPage = () => {
                       </motion.div>
                     </div>
 
-                    {/* Admin/Support Actions */}
+                    {/* Owner/Admin Actions */}
                     <div className="flex items-center gap-2">
+                      {permissions.canClose && ticketData.status !== 'CLOSED' && (
+                        <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleCloseTicket}
+                            disabled={closeLoading}
+                            className="border-red-300 text-red-600 hover:bg-red-50"
+                          >
+                            {closeLoading ? (
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                              <Shield className="h-4 w-4 mr-2" />
+                            )}
+                            {closeLoading ? 'Closing...' : 'Close Ticket'}
+                          </Button>
+                        </motion.div>
+                      )}
+                      
                       <Badge variant="outline" className="border-orange-300 text-orange-600 bg-orange-50">
                         <Shield className="h-3 w-3 mr-1" />
-                        Visible to Support Agent or Admin
+                        {permissions.userRole || 'END_USER'}
                       </Badge>
                       
                       <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
@@ -505,56 +532,86 @@ const TicketDetailPage = () => {
               </motion.div>
             )}
 
-            {/* Reply Section */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.6 }}
-              className="mt-6"
-            >
-              <Card className="bg-white/80 backdrop-blur-sm border-blue-200 shadow-lg">
-                <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-200">
-                  <CardTitle className="text-blue-800">Post Your Reply</CardTitle>
-                </CardHeader>
-                <CardContent className="p-6">
-                  <form onSubmit={handleReplySubmit} className="space-y-4">
-                    <Textarea
-                      placeholder="Write your answer here... Be detailed and helpful!"
-                      value={reply}
-                      onChange={(e) => setReply(e.target.value)}
-                      className="min-h-[120px] bg-white/70 border-blue-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-xl"
-                      required
-                    />
-                    
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm text-blue-600">
-                        Your reply will help resolve this ticket
-                      </p>
+            {/* Reply Section - Only show for ADMIN and SUPPORT_AGENT */}
+            {permissions.canReply && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.6 }}
+                className="mt-6"
+              >
+                <Card className="bg-white/80 backdrop-blur-sm border-blue-200 shadow-lg">
+                  <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-200">
+                    <CardTitle className="text-blue-800">Post Your Reply</CardTitle>
+                    <p className="text-sm text-blue-600">
+                      Only administrators and support agents can reply to tickets
+                    </p>
+                  </CardHeader>
+                  <CardContent className="p-6">
+                    <form onSubmit={handleReplySubmit} className="space-y-4">
+                      <Textarea
+                        placeholder="Write your answer here... Be detailed and helpful!"
+                        value={reply}
+                        onChange={(e) => setReply(e.target.value)}
+                        className="min-h-[120px] bg-white/70 border-blue-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-xl"
+                        required
+                      />
                       
-                      <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                        <Button 
-                          type="submit"
-                          disabled={replyLoading || !reply.trim()}
-                          className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {replyLoading ? (
-                            <>
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                              Posting...
-                            </>
-                          ) : (
-                            <>
-                              <Send className="h-4 w-4 mr-2" />
-                              Reply
-                            </>
-                          )}
-                        </Button>
-                      </motion.div>
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm text-blue-600">
+                          Your reply will resolve this ticket automatically
+                        </p>
+                        
+                        <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                          <Button 
+                            type="submit"
+                            disabled={replyLoading || !reply.trim()}
+                            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {replyLoading ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Posting...
+                              </>
+                            ) : (
+                              <>
+                                <Send className="h-4 w-4 mr-2" />
+                                Reply & Resolve
+                              </>
+                            )}
+                          </Button>
+                        </motion.div>
+                      </div>
+                    </form>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
+
+            {/* No Reply Permission Message */}
+            {!permissions.canReply && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.6 }}
+                className="mt-6"
+              >
+                <Card className="bg-yellow-50 border-yellow-200 shadow-lg">
+                  <CardContent className="p-6 text-center">
+                    <div className="flex items-center justify-center mb-4">
+                      <Shield className="h-12 w-12 text-yellow-500" />
                     </div>
-                  </form>
-                </CardContent>
-              </Card>
-            </motion.div>
+                    <h3 className="text-lg font-semibold text-yellow-800 mb-2">
+                      Reply Restricted
+                    </h3>
+                    <p className="text-yellow-700">
+                      Only administrators and support agents can reply to tickets. 
+                      You can vote on this ticket to show your support.
+                    </p>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
 
             {/* Related/Similar Tickets */}
             <motion.div

@@ -261,15 +261,23 @@ export async function getTicketById(ticketId) {
     },
   });
 
-  // Increment view count
-  if (ticket) {
-    await db.ticket.update({
-      where: { id: ticketId },
-      data: { viewCount: { increment: 1 } },
-    });
-  }
+  if (!ticket) return null;
 
-  return ticket;
+  // Increment view count
+  await db.ticket.update({
+    where: { id: ticketId },
+    data: { viewCount: { increment: 1 } },
+  });
+
+  // Find current user's vote
+  const userVote = ticket.votes.find(vote => vote.user.id === user.id);
+  const userVoteStatus = userVote ? (userVote.isUpvote ? 'up' : 'down') : null;
+
+  // Add user vote status to the response
+  return {
+    ...ticket,
+    userVote: userVoteStatus,
+  };
 }
 
 export async function voteOnTicket(ticketId, isUpvote) {
@@ -518,4 +526,140 @@ export async function getUserPermissions(ticketId) {
     isOwner,
     userRole: user.role,
   };
+}
+
+export async function getAllTickets(filters = {}) {
+  try {
+    const {
+      search = '',
+      category = 'all',
+      status = 'all',
+      sortBy = 'recent',
+      showOpenOnly = false,
+      page = 1,
+      limit = 10
+    } = filters;
+
+    // Build where conditions
+    const whereConditions = {};
+
+    // Search functionality
+    if (search && search.trim()) {
+      whereConditions.OR = [
+        {
+          subject: {
+            contains: search,
+            mode: 'insensitive'
+          }
+        },
+        {
+          description: {
+            contains: search,
+            mode: 'insensitive'
+          }
+        }
+      ];
+    }
+
+    // Category filter
+    if (category && category !== 'all') {
+      whereConditions.category = {
+        name: {
+          equals: category.charAt(0).toUpperCase() + category.slice(1).toLowerCase(),
+          mode: 'insensitive'
+        }
+      };
+    }
+
+    // Status filter
+    if (showOpenOnly) {
+      whereConditions.status = 'OPEN';
+    } else if (status && status !== 'all') {
+      whereConditions.status = status.toUpperCase();
+    }
+
+    // Build orderBy conditions
+    let orderBy = {};
+    switch (sortBy) {
+      case 'recent':
+        orderBy = { createdAt: 'desc' };
+        break;
+      case 'oldest':
+        orderBy = { createdAt: 'asc' };
+        break;
+      case 'mostUpvoted':
+        orderBy = { upvotes: 'desc' };
+        break;
+      case 'mostViewed':
+        orderBy = { viewCount: 'desc' };
+        break;
+      case 'priority':
+        orderBy = { priority: 'desc' };
+        break;
+      default:
+        orderBy = { createdAt: 'desc' };
+    }
+
+    // Calculate pagination
+    const skip = (page - 1) * limit;
+
+    // Fetch tickets
+    const [tickets, totalCount] = await Promise.all([
+      db.ticket.findMany({
+        where: whereConditions,
+        include: {
+          creator: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              avatar: true
+            }
+          },
+          category: {
+            select: {
+              id: true,
+              name: true,
+              color: true
+            }
+          },
+          comments: {
+            select: {
+              id: true
+            }
+          },
+          _count: {
+            select: {
+              comments: true,
+              votes: true
+            }
+          }
+        },
+        orderBy,
+        skip,
+        take: limit
+      }),
+      db.ticket.count({
+        where: whereConditions
+      })
+    ]);
+
+    // Calculate total pages
+    const totalPages = Math.ceil(totalCount / limit);
+
+    return {
+      tickets,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalCount,
+        hasNext: page < totalPages,
+        hasPrevious: page > 1
+      }
+    };
+
+  } catch (error) {
+    console.error('Error fetching tickets:', error);
+    throw new Error('Failed to fetch tickets');
+  }
 }

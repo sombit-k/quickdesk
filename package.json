@@ -7,7 +7,14 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "seed": "node scripts/seed.js",
+    "seed:small": "node scripts/seed.js small",
+    "seed:large": "node scripts/seed.js large",
+    "seed:categories": "node scripts/seed.js categories",
+    "seed:users": "node scripts/seed.js users",
+    "db:seed": "npm run seed",
+    "db:reset": "prisma migrate reset --force && npm run seed"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.27.1",
