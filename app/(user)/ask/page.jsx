@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState } from 'react';
-import { useParams } from 'next/navigation';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,11 +10,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { motion } from "framer-motion";
-import { Upload, X, FileText, Image as ImageIcon, Paperclip, Send, Sparkles } from "lucide-react";
+import { Upload, X, FileText, Image as ImageIcon, Paperclip, Send, Sparkles, CheckCircle, AlertCircle } from "lucide-react";
+import { createTicket, getCategories } from '@/actions/user';
+import { toast } from 'sonner';
 
 const AskQuestionPage = () => {
-  const params = useParams();
-  const userId = params.id;
+  const router = useRouter();
   
   const [formData, setFormData] = useState({
     question: '',
@@ -24,15 +25,30 @@ const AskQuestionPage = () => {
     attachments: []
   });
   
+  const [categories, setCategories] = useState([]);
   const [dragOver, setDragOver] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
 
-  const categories = [
-    { value: 'technical', label: 'Technical', color: 'bg-blue-500' },
-    { value: 'billing', label: 'Billing', color: 'bg-purple-500' },
-    { value: 'general', label: 'General', color: 'bg-green-500' },
-    { value: 'account', label: 'Account', color: 'bg-orange-500' },
-    { value: 'support', label: 'Support', color: 'bg-red-500' }
-  ];
+  // Load categories on component mount
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        setCategoriesLoading(true);
+        const categoryList = await getCategories();
+        setCategories(categoryList);
+      } catch (error) {
+        console.error('Failed to load categories:', error);
+        toast.error('Failed to load categories', {
+          description: 'Please refresh the page and try again.',
+        });
+      } finally {
+        setCategoriesLoading(false);
+      }
+    };
+    loadCategories();
+  }, []);
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({
@@ -80,10 +96,54 @@ const AskQuestionPage = () => {
     handleFileUpload(files);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Handle form submission here
-    console.log('Form submitted:', { ...formData, userId });
+    setLoading(true);
+    
+    try {
+      // Validate required fields
+      if (!formData.question.trim()) {
+        throw new Error('Question title is required');
+      }
+      if (!formData.description.trim()) {
+        throw new Error('Description is required');
+      }
+      if (!formData.category) {
+        throw new Error('Category is required');
+      }
+
+      // Prepare data for submission
+      const ticketData = {
+        question: formData.question,
+        description: formData.description,
+        category: formData.category,
+        tags: formData.tags,
+        attachments: formData.attachments,
+        priority: 'MEDIUM', // Default priority
+      };
+
+      // Create the ticket
+      const ticket = await createTicket(ticketData);
+      
+      // Show success message
+      setSuccess(true);
+      toast.success('Question posted successfully!', {
+        description: 'Your ticket has been created and is now visible to the community.',
+      });
+
+      // Redirect to the ticket page after a short delay
+      setTimeout(() => {
+        router.push(`/ticket/${ticket.id}`);
+      }, 2000);
+
+    } catch (error) {
+      console.error('Failed to create ticket:', error);
+      toast.error('Failed to post question', {
+        description: error.message || 'Something went wrong. Please try again.',
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const formatFileSize = (bytes) => {
@@ -118,9 +178,6 @@ const AskQuestionPage = () => {
           <p className="text-gray-600 text-lg">
             Get help from our community by asking a detailed question
           </p>
-          <Badge variant="outline" className="mt-2 border-blue-200 text-blue-700">
-            User ID: {userId}
-          </Badge>
         </motion.div>
 
         {/* Main Form */}
@@ -196,14 +253,25 @@ const AskQuestionPage = () => {
                         <SelectValue placeholder="Select a category" />
                       </SelectTrigger>
                       <SelectContent className="bg-white/95 backdrop-blur-sm border border-blue-200 rounded-xl shadow-xl">
-                        {categories.map((category) => (
-                          <SelectItem key={category.value} value={category.value}>
+                        {categoriesLoading ? (
+                          <SelectItem value="loading" disabled>
                             <div className="flex items-center gap-2">
-                              <div className={`w-3 h-3 rounded-full ${category.color}`}></div>
-                              {category.label}
+                              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-500"></div>
+                              Loading categories...
                             </div>
                           </SelectItem>
-                        ))}
+                        ) : categories.length > 0 ? (
+                          categories.map((category) => (
+                            <SelectItem key={category.id} value={category.name}>
+                              <div className="flex items-center gap-2">
+                                <div className={`w-3 h-3 rounded-full`} style={{ backgroundColor: category.color || '#3B82F6' }}></div>
+                                {category.name}
+                              </div>
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="empty" disabled>No categories available</SelectItem>
+                        )}
                       </SelectContent>
                     </Select>
                   </motion.div>
@@ -317,10 +385,31 @@ const AskQuestionPage = () => {
                 >
                   <Button 
                     type="submit"
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-4 rounded-xl text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+                    disabled={loading || success || !formData.question.trim() || !formData.description.trim() || !formData.category}
+                    className={`px-8 py-4 rounded-xl text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 ${
+                      success 
+                        ? 'bg-green-600 hover:bg-green-700 text-white' 
+                        : (!formData.question.trim() || !formData.description.trim() || !formData.category)
+                        ? 'bg-gray-400 cursor-not-allowed text-white'
+                        : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white'
+                    }`}
                   >
-                    <Send className="h-5 w-5 mr-2" />
-                    Post Question
+                    {loading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                        Posting...
+                      </>
+                    ) : success ? (
+                      <>
+                        <CheckCircle className="h-5 w-5 mr-2" />
+                        Posted Successfully!
+                      </>
+                    ) : (
+                      <>
+                        <Send className="h-5 w-5 mr-2" />
+                        Post Question
+                      </>
+                    )}
                   </Button>
                 </motion.div>
               </form>
