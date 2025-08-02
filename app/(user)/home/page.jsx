@@ -16,6 +16,7 @@ const dummyQuestions = [
     replies: 21,
     category: "Technical",
     status: "AI",
+    ticketStatus: "Open",
     rating: 4
   },
   {
@@ -25,6 +26,7 @@ const dummyQuestions = [
     replies: 21,
     category: "Technical",
     status: "AI",
+    ticketStatus: "In Progress",
     rating: 5
   },
   {
@@ -34,6 +36,7 @@ const dummyQuestions = [
     replies: 21,
     category: "Technical", 
     status: "AI",
+    ticketStatus: "Resolved",
     rating: 3
   }
 ];
@@ -44,6 +47,47 @@ const HomePage = () => {
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [sortBy, setSortBy] = useState("recent");
   const [currentPage, setCurrentPage] = useState(1);
+
+  // Helper function to get status styling
+  const getStatusStyle = (ticketStatus) => {
+    switch (ticketStatus.toLowerCase()) {
+      case 'open':
+        return {
+          bgColor: 'bg-yellow-100',
+          textColor: 'text-yellow-800',
+          borderColor: 'border-yellow-300',
+          dotColor: 'bg-yellow-500'
+        };
+      case 'in progress':
+        return {
+          bgColor: 'bg-blue-100',
+          textColor: 'text-blue-800',
+          borderColor: 'border-blue-300',
+          dotColor: 'bg-blue-500'
+        };
+      case 'resolved':
+        return {
+          bgColor: 'bg-green-100',
+          textColor: 'text-green-800',
+          borderColor: 'border-green-300',
+          dotColor: 'bg-green-500'
+        };
+      case 'closed':
+        return {
+          bgColor: 'bg-gray-100',
+          textColor: 'text-gray-800',
+          borderColor: 'border-gray-300',
+          dotColor: 'bg-gray-500'
+        };
+      default:
+        return {
+          bgColor: 'bg-gray-100',
+          textColor: 'text-gray-800',
+          borderColor: 'border-gray-300',
+          dotColor: 'bg-gray-500'
+        };
+    }
+  };
 
   return (
     <div className="min-h-screen bg-white p-6 mt-40">
@@ -109,18 +153,24 @@ const HomePage = () => {
             </div>
           </div>
 
-          {/* Search Bar */}
-          <div className="relative">
-            <Input
-              type="text"
-              placeholder="search"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-white border-gray-300 text-black pl-4 pr-12"
-            />
-            <IconSearch className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-600" />
-            <Button className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-green-600 hover:bg-green-700 text-white px-4 py-1 text-sm">
-              Ask
+          {/* Search Bar and Ask Button */}
+          <div className="flex items-center gap-4">
+            {/* Search Bar */}
+            <div className="relative flex-1">
+              <Input
+                type="text"
+                placeholder="Search questions, topics, or content..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-white border-gray-300 text-black pl-10 pr-4 py-3 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-200 focus:border-blue-500"
+              />
+              <IconSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
+            </div>
+            
+            {/* Ask Button */}
+            <Button className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 whitespace-nowrap font-medium">
+              <span className="mr-2">+</span>
+              Ask Question
             </Button>
           </div>
         </div>
@@ -147,6 +197,11 @@ const HomePage = () => {
                       <Badge variant="outline" className="border-blue-500 text-blue-600">
                         {question.status}
                       </Badge>
+                      {/* Ticket Status */}
+                      <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border ${getStatusStyle(question.ticketStatus).bgColor} ${getStatusStyle(question.ticketStatus).textColor} ${getStatusStyle(question.ticketStatus).borderColor}`}>
+                        <div className={`w-2 h-2 rounded-full ${getStatusStyle(question.ticketStatus).dotColor}`}></div>
+                        <span className="text-xs font-medium">{question.ticketStatus}</span>
+                      </div>
                     </div>
                     
                     <h3 className="text-black font-medium mb-2">
