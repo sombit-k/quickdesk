@@ -188,7 +188,7 @@ export async function getUserAllTickets() {
 }
 
 export async function getTicketById(ticketId) {
-  const { userId } = auth();
+  const { userId } = await auth();
   if (!userId) throw new Error("Unauthorized");
 
   const user = await db.user.findUnique({
@@ -196,10 +196,10 @@ export async function getTicketById(ticketId) {
   });
   if (!user) throw new Error("User not found");
 
+  // Allow anyone to view tickets (remove creator restriction for public viewing)
   const ticket = await db.ticket.findFirst({
     where: {
       id: ticketId,
-      creatorId: user.id, // Restrict access to only their own ticket
     },
     include: {
       creator: {
@@ -207,18 +207,21 @@ export async function getTicketById(ticketId) {
           id: true,
           name: true,
           email: true,
+          avatar: true,
         },
       },
       assignee: {
         select: {
           id: true,
           name: true,
+          avatar: true,
         },
       },
       category: {
         select: {
           id: true,
           name: true,
+          color: true,
         },
       },
       comments: {
@@ -227,18 +230,172 @@ export async function getTicketById(ticketId) {
             select: {
               id: true,
               name: true,
+              avatar: true,
             },
           },
         },
         orderBy: {
-          createdAt: "desc",
+          createdAt: "asc", // Show oldest comments first
         },
       },
-      attachments: true,
-      votes: true,
+      attachments: {
+        select: {
+          id: true,
+          filename: true,
+          originalName: true,
+          mimeType: true,
+          size: true,
+          url: true,
+        },
+      },
+      votes: {
+        include: {
+          user: {
+            select: {
+              id: true,
+            },
+          },
+        },
+      },
       notifications: true,
     },
   });
 
+  // Increment view count
+  if (ticket) {
+    await db.ticket.update({
+      where: { id: ticketId },
+      data: { viewCount: { increment: 1 } },
+    });
+  }
+
   return ticket;
+}
+
+export async function voteOnTicket(ticketId, isUpvote) {
+  const { userId: clerkUserId } = await auth();
+  if (!clerkUserId) {
+    throw new Error("Unauthorized - Please sign in to vote");
+  }
+  
+  const user = await db.user.findUnique({
+    where: { clerkUserId },
+  });
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  try {
+    // Check if user has already voted
+    const existingVote = await db.vote.findUnique({
+      where: {
+        ticketId_userId: {
+          ticketId: ticketId,
+          userId: user.id,
+        },
+      },
+    });
+
+    if (existingVote) {
+      if (existingVote.isUpvote === isUpvote) {
+        // Remove vote if clicking the same vote
+        await db.vote.delete({
+          where: { id: existingVote.id },
+        });
+        
+        // Update ticket vote counts
+        await db.ticket.update({
+          where: { id: ticketId },
+          data: {
+            upvotes: isUpvote ? { decrement: 1 } : undefined,
+            downvotes: !isUpvote ? { decrement: 1 } : undefined,
+          },
+        });
+        
+        return { action: 'removed', vote: null };
+      } else {
+        // Change vote
+        await db.vote.update({
+          where: { id: existingVote.id },
+          data: { isUpvote },
+        });
+        
+        // Update ticket vote counts
+        await db.ticket.update({
+          where: { id: ticketId },
+          data: {
+            upvotes: isUpvote ? { increment: 1 } : { decrement: 1 },
+            downvotes: !isUpvote ? { increment: 1 } : { decrement: 1 },
+          },
+        });
+        
+        return { action: 'changed', vote: isUpvote ? 'up' : 'down' };
+      }
+    } else {
+      // Create new vote
+      await db.vote.create({
+        data: {
+          ticketId,
+          userId: user.id,
+          isUpvote,
+        },
+      });
+      
+      // Update ticket vote counts
+      await db.ticket.update({
+        where: { id: ticketId },
+        data: {
+          upvotes: isUpvote ? { increment: 1 } : undefined,
+          downvotes: !isUpvote ? { increment: 1 } : undefined,
+        },
+      });
+      
+      return { action: 'added', vote: isUpvote ? 'up' : 'down' };
+    }
+  } catch (error) {
+    console.error('Error voting on ticket:', error);
+    throw new Error('Failed to process vote');
+  }
+}
+
+export async function replyToTicket(ticketId, content) {
+  const { userId: clerkUserId } = await auth();
+  if (!clerkUserId) {
+    throw new Error("Unauthorized - Please sign in to reply");
+  }
+  
+  const user = await db.user.findUnique({
+    where: { clerkUserId },
+  });
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  if (!content || !content.trim()) {
+    throw new Error("Reply content is required");
+  }
+
+  try {
+    const comment = await db.comment.create({
+      data: {
+        content: content.trim(),
+        ticketId,
+        authorId: user.id,
+      },
+      include: {
+        author: {
+          select: {
+            id: true,
+            name: true,
+            avatar: true,
+          },
+        },
+      },
+    });
+
+    return comment;
+  } catch (error) {
+    console.error('Error creating reply:', error);
+    throw new Error('Failed to create reply');
+  }
 }
