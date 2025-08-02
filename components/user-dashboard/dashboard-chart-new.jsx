@@ -38,7 +38,7 @@ export function DashboardChart() {
             initial={{ x: -20 }}
             animate={{ x: 0 }}
             transition={{ delay: 0.3, duration: 0.5 }}
-            className="text-2xl font-bold text-green-800 mb-3 bg-gradient-to-r from-green-800 to-emerald-700 bg-clip-text text-transparent"
+            className="text-2xl font-bold text-green-800 mb-3 bg-gradient-to-r from-green-800 to-emerald-700 bg-clip-text"
           >
             Display the graphical representation of Data.
           </motion.h2>
