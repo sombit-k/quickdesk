@@ -26,9 +26,13 @@ export function NavbarDemo() {
             link: "dashboard",
         },
         {
-            name: "Listings",
-            link: "listings",
+            name: "All tickets",
+            link: "home",
         },
+        {
+            name: "Create New Ticket",
+            link: "ask",
+        }
     ];
 
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
