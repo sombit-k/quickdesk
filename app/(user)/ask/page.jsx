@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { motion } from "framer-motion";
 import { Upload, X, FileText, Image as ImageIcon, Paperclip, Send, Sparkles, CheckCircle, AlertCircle } from "lucide-react";
-import { createTicket, getCategories } from '@/actions/user';
+import { createTicket, getCategories, testDatabaseConnection } from '@/actions/user';
 import { toast } from 'sonner';
 
 const AskQuestionPage = () => {
@@ -30,18 +30,33 @@ const AskQuestionPage = () => {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [dbConnected, setDbConnected] = useState(true);
 
   // Load categories on component mount
   useEffect(() => {
     const loadCategories = async () => {
       try {
         setCategoriesLoading(true);
+        
+        // Test database connection first
+        const connectionTest = await testDatabaseConnection();
+        if (!connectionTest.success) {
+          setDbConnected(false);
+          toast.error('Database Connection Issue', {
+            description: 'Unable to connect to the database. Some features may not work properly.',
+            duration: 5000,
+          });
+          return;
+        }
+        
         const categoryList = await getCategories();
         setCategories(categoryList);
       } catch (error) {
         console.error('Failed to load categories:', error);
+        setDbConnected(false);
         toast.error('Failed to load categories', {
-          description: 'Please refresh the page and try again.',
+          description: 'Database connection error. Please refresh the page and try again.',
+          duration: 5000,
         });
       } finally {
         setCategoriesLoading(false);
@@ -138,9 +153,24 @@ const AskQuestionPage = () => {
 
     } catch (error) {
       console.error('Failed to create ticket:', error);
-      toast.error('Failed to post question', {
-        description: error.message || 'Something went wrong. Please try again.',
-      });
+      
+      // Check if it's a database connection error
+      if (error.message.includes("Can't reach database server")) {
+        toast.error('Database Connection Error', {
+          description: 'Unable to connect to the database. Please try again later or contact support.',
+          duration: 5000,
+        });
+      } else if (error.message.includes("User not found")) {
+        toast.error('Authentication Error', {
+          description: 'Your user account was not found. Please sign out and sign in again.',
+          duration: 5000,
+        });
+      } else {
+        toast.error('Failed to post question', {
+          description: error.message || 'Something went wrong. Please try again.',
+          duration: 5000,
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -178,6 +208,16 @@ const AskQuestionPage = () => {
           <p className="text-gray-600 text-lg">
             Get help from our community by asking a detailed question
           </p>
+          {!dbConnected && (
+            <div className="mt-3 p-3 bg-red-100 border border-red-300 rounded-lg">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 text-red-600" />
+                <p className="text-red-700 text-sm font-medium">
+                  Database connection issue detected. Form submission may not work properly.
+                </p>
+              </div>
+            </div>
+          )}
         </motion.div>
 
         {/* Main Form */}

@@ -2,6 +2,16 @@
 import { db } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
 
+export async function testDatabaseConnection() {
+  try {
+    const result = await db.$queryRaw`SELECT 1 as test`;
+    return { success: true, result };
+  } catch (error) {
+    console.error('Database connection test failed:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 export async function getCategories() {
   try {
     const categories = await db.category.findMany({
@@ -51,19 +61,34 @@ export async function getCategories() {
 export async function createTicket(data) {
   console.log('Creating ticket with data:', data);
   
-  const { userId: clerkUserId } = auth();
+  const { userId: clerkUserId } = await auth();
   if (!clerkUserId) {
-    throw new Error("Unauthorized");
+    throw new Error("Unauthorized - Please sign in to create a ticket");
   }
   
-  const user = await db.user.findUnique({
+  // Find or create user in our database
+  let user = await db.user.findUnique({
     where: { clerkUserId },
   });
+  
   if (!user) {
-    throw new Error("User not found");
+    // If user doesn't exist in our database, we might need to create them
+    // This could happen if they signed up but weren't automatically added to our DB
+    throw new Error("User not found in database. Please contact support.");
   }
 
   console.log('User found:', { id: user.id, name: user.name });
+
+  // Validate required fields
+  if (!data.question || !data.question.trim()) {
+    throw new Error("Question title is required");
+  }
+  if (!data.description || !data.description.trim()) {
+    throw new Error("Description is required");
+  }
+  if (!data.category) {
+    throw new Error("Category is required");
+  }
 
   // Find category by name if provided
   let categoryId = data.categoryId;
@@ -114,13 +139,13 @@ export async function createTicket(data) {
     const attachmentPromises = data.attachments.map(attachment => 
       db.attachment.create({
         data: {
-          fileName: attachment.name,
-          fileSize: attachment.size,
+          filename: `${Date.now()}_${attachment.name}`, // Add timestamp to avoid conflicts
+          originalName: attachment.name,
           mimeType: attachment.type,
+          size: attachment.size,
+          url: `/uploads/${ticket.id}/${Date.now()}_${attachment.name}`, // Placeholder URL
           ticketId: ticket.id,
           uploadedById: user.id,
-          // Note: You'll need to implement file storage and set the filePath
-          filePath: `/uploads/${ticket.id}/${attachment.name}`, // Placeholder
         },
       })
     );
