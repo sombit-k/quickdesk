@@ -1,6 +1,7 @@
+"use client";
+
 import { cn } from "@/lib/utils";
 import React from "react";
-import Hero from "@/components/hero";
 export function DotBackgroundDemo() {
   return (
     <div
@@ -17,7 +18,14 @@ export function DotBackgroundDemo() {
         className="pointer-events-none absolute inset-0 flex items-center justify-center bg-white [mask-image:radial-gradient(ellipse_at_center,transparent_20%,black)] dark:bg-black"></div>
       <div
         className="relative z-20 bg-gradient-to-b from-neutral-200 to-neutral-500 bg-clip-text py-8 text-4xl font-bold text-transparent sm:text-7xl">
-        <Hero />
+        <div className="text-center">
+          <h2 className="text-4xl md:text-6xl font-bold mb-4">
+            Experience Modern
+          </h2>
+          <h3 className="text-3xl md:text-5xl font-semibold text-blue-600">
+            Support Solutions
+          </h3>
+        </div>
       </div>
     </div>
   );
