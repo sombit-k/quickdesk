@@ -1,4 +1,4 @@
-import { AnimatedTestimonials } from "@/components/ui/animated-testimonials";
+import { Card, CardContent } from "@/components/ui/card";
 
 export function AnimatedTestimonialsDemo() {
   const testimonials = [
@@ -38,5 +38,29 @@ export function AnimatedTestimonialsDemo() {
       src: "https://images.unsplash.com/photo-1624561172888-ac93c696e10c?q=80&w=2592&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
     },
   ];
-  return <AnimatedTestimonials testimonials={testimonials} />;
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {testimonials.map((testimonial, index) => (
+        <Card key={index} className="bg-white/90 backdrop-blur-sm border border-gray-200 shadow-lg hover:shadow-xl transition-all duration-300">
+          <CardContent className="p-6">
+            <div className="flex items-center mb-4">
+              <img
+                src={testimonial.src}
+                alt={testimonial.name}
+                className="h-12 w-12 rounded-full object-cover mr-4"
+              />
+              <div>
+                <h4 className="font-semibold text-gray-900">{testimonial.name}</h4>
+                <p className="text-sm text-gray-600">{testimonial.designation}</p>
+              </div>
+            </div>
+            <blockquote className="text-gray-700 italic leading-relaxed">
+              "{testimonial.quote}"
+            </blockquote>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
 }
