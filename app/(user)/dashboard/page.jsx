@@ -1,4 +1,4 @@
-import { DashboardLayout } from '@/components/user-dashboard/dashboard-layout'
+import { DashboardLayoutNew } from '@/components/user-dashboard/dashboard-layout-new'
 import React from 'react'
 // import {fetchListingsByUserId} from '@/actions/lists'
 
@@ -9,8 +9,7 @@ const UserDashboard = async () => {
   
   return (
     <>
-    
-      <DashboardLayout />
+      <DashboardLayoutNew />
     </>
   )
 }
