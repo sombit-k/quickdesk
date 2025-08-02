@@ -1,13 +1,14 @@
 "use server";
 import { db } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
+import sendEmail from "./sendEmail";
 
 export async function testDatabaseConnection() {
   try {
     const result = await db.$queryRaw`SELECT 1 as test`;
     return { success: true, result };
   } catch (error) {
-    console.error('Database connection test failed:', error);
+    console.error("Database connection test failed:", error);
     return { success: false, error: error.message };
   }
 }
@@ -22,17 +23,37 @@ export async function getCategories() {
         description: true,
         color: true,
       },
-      orderBy: { name: 'asc' },
+      orderBy: { name: "asc" },
     });
 
     // If no categories exist, create default ones
     if (categories.length === 0) {
       const defaultCategories = [
-        { name: 'Technical', description: 'Technical support and troubleshooting', color: '#3B82F6' },
-        { name: 'Billing', description: 'Billing and payment related inquiries', color: '#8B5CF6' },
-        { name: 'General', description: 'General questions and information', color: '#10B981' },
-        { name: 'Account', description: 'Account management and settings', color: '#F59E0B' },
-        { name: 'Support', description: 'Customer support requests', color: '#EF4444' },
+        {
+          name: "Technical",
+          description: "Technical support and troubleshooting",
+          color: "#3B82F6",
+        },
+        {
+          name: "Billing",
+          description: "Billing and payment related inquiries",
+          color: "#8B5CF6",
+        },
+        {
+          name: "General",
+          description: "General questions and information",
+          color: "#10B981",
+        },
+        {
+          name: "Account",
+          description: "Account management and settings",
+          color: "#F59E0B",
+        },
+        {
+          name: "Support",
+          description: "Customer support requests",
+          color: "#EF4444",
+        },
       ];
 
       const createdCategories = [];
@@ -59,25 +80,23 @@ export async function getCategories() {
 }
 
 export async function createTicket(data) {
-  console.log('Creating ticket with data:', data);
-  
   const { userId: clerkUserId } = await auth();
   if (!clerkUserId) {
     throw new Error("Unauthorized - Please sign in to create a ticket");
   }
-  
+
   // Find or create user in our database
   let user = await db.user.findUnique({
     where: { clerkUserId },
   });
-  
+
   if (!user) {
     // If user doesn't exist in our database, we might need to create them
     // This could happen if they signed up but weren't automatically added to our DB
     throw new Error("User not found in database. Please contact support.");
   }
 
-  console.log('User found:', { id: user.id, name: user.name });
+  console.log("User found:", { id: user.id, name: user.name });
 
   // Validate required fields
   if (!data.question || !data.question.trim()) {
@@ -94,15 +113,17 @@ export async function createTicket(data) {
   let categoryId = data.categoryId;
   if (data.category && !categoryId) {
     const category = await db.category.findFirst({
-      where: { 
-        name: { 
-          equals: data.category.charAt(0).toUpperCase() + data.category.slice(1).toLowerCase(), 
-          mode: 'insensitive' 
-        } 
+      where: {
+        name: {
+          equals:
+            data.category.charAt(0).toUpperCase() +
+            data.category.slice(1).toLowerCase(),
+          mode: "insensitive",
+        },
       },
     });
     categoryId = category?.id;
-    console.log('Category found:', category);
+    console.log("Category found:", category);
   }
 
   if (!categoryId) {
@@ -112,31 +133,32 @@ export async function createTicket(data) {
   const ticketData = {
     subject: data.question || data.subject,
     description: data.description,
-    priority: data.priority || 'MEDIUM',
+    priority: data.priority || "MEDIUM",
     categoryId: categoryId,
     creatorId: user.id,
   };
 
-  console.log('Creating ticket with:', ticketData);
+  console.log("Creating ticket with:", ticketData);
 
   const ticket = await db.ticket.create({
     data: ticketData,
   });
 
-  console.log('Ticket created:', ticket);
+  console.log("Ticket created:", ticket);
 
   // Handle tags if provided
   if (data.tags && data.tags.trim()) {
-    const tagNames = data.tags.split(',').map(tag => tag.trim()).filter(Boolean);
-    console.log('Tags to process:', tagNames);
-    // Note: This assumes you have a Tag model and TicketTag junction table
-    // If not implemented yet, this can be added later
+    const tagNames = data.tags
+      .split(",")
+      .map(tag => tag.trim())
+      .filter(Boolean);
+    console.log("Tags to process:", tagNames);
   }
 
   // Handle attachments if provided
   if (data.attachments && data.attachments.length > 0) {
-    console.log('Processing attachments:', data.attachments.length);
-    const attachmentPromises = data.attachments.map(attachment => 
+    console.log("Processing attachments:", data.attachments.length);
+    const attachmentPromises = data.attachments.map(attachment =>
       db.attachment.create({
         data: {
           filename: `${Date.now()}_${attachment.name}`, // Add timestamp to avoid conflicts
@@ -150,8 +172,34 @@ export async function createTicket(data) {
       })
     );
     await Promise.all(attachmentPromises);
-    console.log('Attachments created');
+    console.log("Attachments created");
   }
+
+  await sendEmail({
+    to: user.email,
+    subject: `✅ Ticket Submitted: ${ticket.subject}`,
+    react: (
+      <div>
+        <h2 style={{ fontSize: "16px", fontWeight: "bold" }}>
+          Hi {user.name},
+        </h2>
+        <p>
+          Thank you for submitting your ticket. Our team will get back soon.
+        </p>
+        <p>
+          <strong>Ticket ID:</strong> {ticket.id}
+        </p>
+        <p>
+          <strong>Subject:</strong> {ticket.subject}
+        </p>
+        <p>
+          <strong>Description:</strong> {ticket.description}
+        </p>
+        <br />
+        <p>– QuickDesk Support</p>
+      </div>
+    ),
+  });
 
   return ticket;
 }
@@ -271,7 +319,7 @@ export async function getTicketById(ticketId) {
 
   // Find current user's vote
   const userVote = ticket.votes.find(vote => vote.user.id === user.id);
-  const userVoteStatus = userVote ? (userVote.isUpvote ? 'up' : 'down') : null;
+  const userVoteStatus = userVote ? (userVote.isUpvote ? "up" : "down") : null;
 
   // Add user vote status to the response
   return {
@@ -285,7 +333,7 @@ export async function voteOnTicket(ticketId, isUpvote) {
   if (!clerkUserId) {
     throw new Error("Unauthorized - Please sign in to vote");
   }
-  
+
   const user = await db.user.findUnique({
     where: { clerkUserId },
   });
@@ -310,7 +358,7 @@ export async function voteOnTicket(ticketId, isUpvote) {
         await db.vote.delete({
           where: { id: existingVote.id },
         });
-        
+
         // Update ticket vote counts
         await db.ticket.update({
           where: { id: ticketId },
@@ -319,15 +367,15 @@ export async function voteOnTicket(ticketId, isUpvote) {
             downvotes: !isUpvote ? { decrement: 1 } : undefined,
           },
         });
-        
-        return { action: 'removed', vote: null };
+
+        return { action: "removed", vote: null };
       } else {
         // Change vote
         await db.vote.update({
           where: { id: existingVote.id },
           data: { isUpvote },
         });
-        
+
         // Update ticket vote counts
         await db.ticket.update({
           where: { id: ticketId },
@@ -336,8 +384,8 @@ export async function voteOnTicket(ticketId, isUpvote) {
             downvotes: !isUpvote ? { increment: 1 } : { decrement: 1 },
           },
         });
-        
-        return { action: 'changed', vote: isUpvote ? 'up' : 'down' };
+
+        return { action: "changed", vote: isUpvote ? "up" : "down" };
       }
     } else {
       // Create new vote
@@ -348,7 +396,7 @@ export async function voteOnTicket(ticketId, isUpvote) {
           isUpvote,
         },
       });
-      
+
       // Update ticket vote counts
       await db.ticket.update({
         where: { id: ticketId },
@@ -357,12 +405,12 @@ export async function voteOnTicket(ticketId, isUpvote) {
           downvotes: !isUpvote ? { increment: 1 } : undefined,
         },
       });
-      
-      return { action: 'added', vote: isUpvote ? 'up' : 'down' };
+
+      return { action: "added", vote: isUpvote ? "up" : "down" };
     }
   } catch (error) {
-    console.error('Error voting on ticket:', error);
-    throw new Error('Failed to process vote');
+    console.error("Error voting on ticket:", error);
+    throw new Error("Failed to process vote");
   }
 }
 
@@ -371,7 +419,7 @@ export async function replyToTicket(ticketId, content) {
   if (!clerkUserId) {
     throw new Error("Unauthorized - Please sign in to reply");
   }
-  
+
   const user = await db.user.findUnique({
     where: { clerkUserId },
   });
@@ -380,8 +428,10 @@ export async function replyToTicket(ticketId, content) {
   }
 
   // Check if user has permission to reply (only ADMIN and SUPPORT_AGENT)
-  if (user.role !== 'ADMIN' && user.role !== 'SUPPORT_AGENT') {
-    throw new Error("Only administrators and support agents can reply to tickets");
+  if (user.role !== "ADMIN" && user.role !== "SUPPORT_AGENT") {
+    throw new Error(
+      "Only administrators and support agents can reply to tickets"
+    );
   }
 
   if (!content || !content.trim()) {
@@ -410,16 +460,16 @@ export async function replyToTicket(ticketId, content) {
     // Update ticket status to RESOLVED when a reply is added
     await db.ticket.update({
       where: { id: ticketId },
-      data: { 
-        status: 'RESOLVED',
+      data: {
+        status: "RESOLVED",
         resolvedAt: new Date(),
       },
     });
 
     return comment;
   } catch (error) {
-    console.error('Error creating reply:', error);
-    throw new Error('Failed to create reply');
+    console.error("Error creating reply:", error);
+    throw new Error("Failed to create reply");
   }
 }
 
@@ -428,7 +478,7 @@ export async function closeTicket(ticketId) {
   if (!clerkUserId) {
     throw new Error("Unauthorized - Please sign in to close ticket");
   }
-  
+
   const user = await db.user.findUnique({
     where: { clerkUserId },
   });
@@ -452,27 +502,30 @@ export async function closeTicket(ticketId) {
     }
 
     // Check if user is the ticket owner or has admin/support privileges
-    const canClose = ticket.creatorId === user.id || 
-                     user.role === 'ADMIN' || 
-                     user.role === 'SUPPORT_AGENT';
+    const canClose =
+      ticket.creatorId === user.id ||
+      user.role === "ADMIN" ||
+      user.role === "SUPPORT_AGENT";
 
     if (!canClose) {
-      throw new Error("Only ticket owners, administrators, or support agents can close tickets");
+      throw new Error(
+        "Only ticket owners, administrators, or support agents can close tickets"
+      );
     }
 
     // Update ticket status to CLOSED
     const updatedTicket = await db.ticket.update({
       where: { id: ticketId },
-      data: { 
-        status: 'CLOSED',
+      data: {
+        status: "CLOSED",
         closedAt: new Date(),
       },
     });
 
     return updatedTicket;
   } catch (error) {
-    console.error('Error closing ticket:', error);
-    throw new Error('Failed to close ticket');
+    console.error("Error closing ticket:", error);
+    throw new Error("Failed to close ticket");
   }
 }
 
@@ -487,7 +540,7 @@ export async function getUserPermissions(ticketId) {
       userRole: null,
     };
   }
-  
+
   const user = await db.user.findUnique({
     where: { clerkUserId },
     select: {
@@ -495,7 +548,7 @@ export async function getUserPermissions(ticketId) {
       role: true,
     },
   });
-  
+
   if (!user) {
     return {
       canReply: false,
@@ -515,8 +568,9 @@ export async function getUserPermissions(ticketId) {
     isOwner = ticket?.creatorId === user.id;
   }
 
-  const canReply = user.role === 'ADMIN' || user.role === 'SUPPORT_AGENT';
-  const canClose = isOwner || user.role === 'ADMIN' || user.role === 'SUPPORT_AGENT';
+  const canReply = user.role === "ADMIN" || user.role === "SUPPORT_AGENT";
+  const canClose =
+    isOwner || user.role === "ADMIN" || user.role === "SUPPORT_AGENT";
   const canVote = true; // All authenticated users can vote
 
   return {
@@ -531,13 +585,13 @@ export async function getUserPermissions(ticketId) {
 export async function getAllTickets(filters = {}) {
   try {
     const {
-      search = '',
-      category = 'all',
-      status = 'all',
-      sortBy = 'recent',
+      search = "",
+      category = "all",
+      status = "all",
+      sortBy = "recent",
       showOpenOnly = false,
       page = 1,
-      limit = 10
+      limit = 10,
     } = filters;
 
     // Build where conditions
@@ -549,55 +603,56 @@ export async function getAllTickets(filters = {}) {
         {
           subject: {
             contains: search,
-            mode: 'insensitive'
-          }
+            mode: "insensitive",
+          },
         },
         {
           description: {
             contains: search,
-            mode: 'insensitive'
-          }
-        }
+            mode: "insensitive",
+          },
+        },
       ];
     }
 
     // Category filter
-    if (category && category !== 'all') {
+    if (category && category !== "all") {
       whereConditions.category = {
         name: {
-          equals: category.charAt(0).toUpperCase() + category.slice(1).toLowerCase(),
-          mode: 'insensitive'
-        }
+          equals:
+            category.charAt(0).toUpperCase() + category.slice(1).toLowerCase(),
+          mode: "insensitive",
+        },
       };
     }
 
     // Status filter
     if (showOpenOnly) {
-      whereConditions.status = 'OPEN';
-    } else if (status && status !== 'all') {
+      whereConditions.status = "OPEN";
+    } else if (status && status !== "all") {
       whereConditions.status = status.toUpperCase();
     }
 
     // Build orderBy conditions
     let orderBy = {};
     switch (sortBy) {
-      case 'recent':
-        orderBy = { createdAt: 'desc' };
+      case "recent":
+        orderBy = { createdAt: "desc" };
         break;
-      case 'oldest':
-        orderBy = { createdAt: 'asc' };
+      case "oldest":
+        orderBy = { createdAt: "asc" };
         break;
-      case 'mostUpvoted':
-        orderBy = { upvotes: 'desc' };
+      case "mostUpvoted":
+        orderBy = { upvotes: "desc" };
         break;
-      case 'mostViewed':
-        orderBy = { viewCount: 'desc' };
+      case "mostViewed":
+        orderBy = { viewCount: "desc" };
         break;
-      case 'priority':
-        orderBy = { priority: 'desc' };
+      case "priority":
+        orderBy = { priority: "desc" };
         break;
       default:
-        orderBy = { createdAt: 'desc' };
+        orderBy = { createdAt: "desc" };
     }
 
     // Calculate pagination
@@ -613,35 +668,35 @@ export async function getAllTickets(filters = {}) {
               id: true,
               name: true,
               email: true,
-              avatar: true
-            }
+              avatar: true,
+            },
           },
           category: {
             select: {
               id: true,
               name: true,
-              color: true
-            }
+              color: true,
+            },
           },
           comments: {
             select: {
-              id: true
-            }
+              id: true,
+            },
           },
           _count: {
             select: {
               comments: true,
-              votes: true
-            }
-          }
+              votes: true,
+            },
+          },
         },
         orderBy,
         skip,
-        take: limit
+        take: limit,
       }),
       db.ticket.count({
-        where: whereConditions
-      })
+        where: whereConditions,
+      }),
     ]);
 
     // Calculate total pages
@@ -654,12 +709,11 @@ export async function getAllTickets(filters = {}) {
         totalPages,
         totalCount,
         hasNext: page < totalPages,
-        hasPrevious: page > 1
-      }
+        hasPrevious: page > 1,
+      },
     };
-
   } catch (error) {
-    console.error('Error fetching tickets:', error);
-    throw new Error('Failed to fetch tickets');
+    console.error("Error fetching tickets:", error);
+    throw new Error("Failed to fetch tickets");
   }
 }
