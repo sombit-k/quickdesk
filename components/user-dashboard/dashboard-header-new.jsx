@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -26,9 +27,9 @@ export function DashboardHeader() {
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6 }}
-      className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 border-b border-gray-200 sticky top-0 z-50 backdrop-blur-sm mt-20"
+      className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 border-b border-gray-200 sticky top-0 z-50 backdrop-blur-sm "
     >
-      <div className="px-8 py-6">
+      <div className="px-8 py-6 ">
         {/* Top Section - Welcome & User Actions */}
         <motion.div 
           initial={{ opacity: 0 }}
@@ -44,7 +45,7 @@ export function DashboardHeader() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5, duration: 0.6 }}
-          className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6"
+          className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 mt-20"
         >
           {/* Left Side - Search and Filters */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 flex-1">
@@ -127,12 +128,14 @@ export function DashboardHeader() {
               whileHover={{ scale: 1.05, rotateZ: 5 }} 
               whileTap={{ scale: 0.95 }}
             >
-              <Button 
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 rounded-xl px-6"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                New Ticket
-              </Button>
+              <Link href="/ask">
+                <Button 
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 rounded-xl px-6"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  New Ticket
+                </Button>
+              </Link>
             </motion.div>
           </motion.div>
         </motion.div>
