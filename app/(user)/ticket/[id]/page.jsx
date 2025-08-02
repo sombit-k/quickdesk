@@ -27,7 +27,7 @@ import {
   Eye,
   Loader2
 } from "lucide-react";
-import { getTicketById, voteOnTicket, replyToTicket } from '@/actions/user';
+import { getTicketById, voteOnTicket, replyToTicket, getUserPermissions, closeTicket } from '@/actions/user';
 import { toast } from 'sonner';
 import { Toaster } from 'sonner';
 
@@ -43,13 +43,24 @@ const TicketDetailPage = () => {
   const [reply, setReply] = useState('');
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [replyLoading, setReplyLoading] = useState(false);
+  const [permissions, setPermissions] = useState({
+    canReply: false,
+    canClose: false,
+    canVote: false,
+    isOwner: false,
+    userRole: null,
+  });
+  const [closeLoading, setCloseLoading] = useState(false);
 
   // Load ticket data
   useEffect(() => {
     const loadTicket = async () => {
       try {
         setLoading(true);
-        const ticket = await getTicketById(ticketId);
+        const [ticket, userPerms] = await Promise.all([
+          getTicketById(ticketId),
+          getUserPermissions(ticketId)
+        ]);
         
         if (!ticket) {
           setError('Ticket not found');
@@ -58,6 +69,7 @@ const TicketDetailPage = () => {
 
         setTicketData(ticket);
         setVotes(ticket.upvotes - ticket.downvotes);
+        setPermissions(userPerms);
         
         // Check if user has voted (from the votes array)
         // Note: You'll need to get current user info to check this properly
@@ -79,7 +91,7 @@ const TicketDetailPage = () => {
   }, [ticketId]);
 
   const handleVote = async (type) => {
-    if (!ticketData) return;
+    if (!ticketData || !permissions.canVote) return;
     
     try {
       const isUpvote = type === 'up';
@@ -111,7 +123,7 @@ const TicketDetailPage = () => {
 
   const handleReplySubmit = async (e) => {
     e.preventDefault();
-    if (!reply.trim() || !ticketData) return;
+    if (!reply.trim() || !ticketData || !permissions.canReply) return;
     
     try {
       setReplyLoading(true);
@@ -120,11 +132,12 @@ const TicketDetailPage = () => {
       // Update local state with the new comment
       setTicketData(prev => ({
         ...prev,
+        status: 'RESOLVED', // Update status to resolved
         comments: [...(prev.comments || []), newComment]
       }));
       
       setReply('');
-      toast.success('Reply posted successfully!');
+      toast.success('Reply posted successfully! Ticket status updated to resolved.');
       
     } catch (error) {
       console.error('Failed to post reply:', error);
@@ -140,7 +153,33 @@ const TicketDetailPage = () => {
     // Create shareable link
     const shareUrl = `${window.location.origin}/ticket/${ticketId}`;
     navigator.clipboard.writeText(shareUrl);
-    // Show toast notification
+    toast.success('Link copied to clipboard!');
+  };
+
+  const handleCloseTicket = async () => {
+    if (!ticketData || !permissions.canClose) return;
+    
+    try {
+      setCloseLoading(true);
+      await closeTicket(ticketData.id);
+      
+      // Update local state
+      setTicketData(prev => ({
+        ...prev,
+        status: 'CLOSED',
+        closedAt: new Date()
+      }));
+      
+      toast.success('Ticket closed successfully!');
+      
+    } catch (error) {
+      console.error('Failed to close ticket:', error);
+      toast.error('Failed to close ticket', {
+        description: error.message || 'Something went wrong. Please try again.',
+      });
+    } finally {
+      setCloseLoading(false);
+    }
   };
 
   const getStatusColor = (status) => {

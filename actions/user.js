@@ -371,11 +371,17 @@ export async function replyToTicket(ticketId, content) {
     throw new Error("User not found");
   }
 
+  // Check if user has permission to reply (only ADMIN and SUPPORT_AGENT)
+  if (user.role !== 'ADMIN' && user.role !== 'SUPPORT_AGENT') {
+    throw new Error("Only administrators and support agents can reply to tickets");
+  }
+
   if (!content || !content.trim()) {
     throw new Error("Reply content is required");
   }
 
   try {
+    // Create the comment
     const comment = await db.comment.create({
       data: {
         content: content.trim(),
@@ -393,9 +399,123 @@ export async function replyToTicket(ticketId, content) {
       },
     });
 
+    // Update ticket status to RESOLVED when a reply is added
+    await db.ticket.update({
+      where: { id: ticketId },
+      data: { 
+        status: 'RESOLVED',
+        resolvedAt: new Date(),
+      },
+    });
+
     return comment;
   } catch (error) {
     console.error('Error creating reply:', error);
     throw new Error('Failed to create reply');
   }
+}
+
+export async function closeTicket(ticketId) {
+  const { userId: clerkUserId } = await auth();
+  if (!clerkUserId) {
+    throw new Error("Unauthorized - Please sign in to close ticket");
+  }
+  
+  const user = await db.user.findUnique({
+    where: { clerkUserId },
+  });
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  try {
+    // Get the ticket to check ownership
+    const ticket = await db.ticket.findUnique({
+      where: { id: ticketId },
+      select: {
+        id: true,
+        creatorId: true,
+        status: true,
+      },
+    });
+
+    if (!ticket) {
+      throw new Error("Ticket not found");
+    }
+
+    // Check if user is the ticket owner or has admin/support privileges
+    const canClose = ticket.creatorId === user.id || 
+                     user.role === 'ADMIN' || 
+                     user.role === 'SUPPORT_AGENT';
+
+    if (!canClose) {
+      throw new Error("Only ticket owners, administrators, or support agents can close tickets");
+    }
+
+    // Update ticket status to CLOSED
+    const updatedTicket = await db.ticket.update({
+      where: { id: ticketId },
+      data: { 
+        status: 'CLOSED',
+        closedAt: new Date(),
+      },
+    });
+
+    return updatedTicket;
+  } catch (error) {
+    console.error('Error closing ticket:', error);
+    throw new Error('Failed to close ticket');
+  }
+}
+
+export async function getUserPermissions(ticketId) {
+  const { userId: clerkUserId } = await auth();
+  if (!clerkUserId) {
+    return {
+      canReply: false,
+      canClose: false,
+      canVote: false,
+      isOwner: false,
+      userRole: null,
+    };
+  }
+  
+  const user = await db.user.findUnique({
+    where: { clerkUserId },
+    select: {
+      id: true,
+      role: true,
+    },
+  });
+  
+  if (!user) {
+    return {
+      canReply: false,
+      canClose: false,
+      canVote: false,
+      isOwner: false,
+      userRole: null,
+    };
+  }
+
+  let isOwner = false;
+  if (ticketId) {
+    const ticket = await db.ticket.findUnique({
+      where: { id: ticketId },
+      select: { creatorId: true },
+    });
+    isOwner = ticket?.creatorId === user.id;
+  }
+
+  const canReply = user.role === 'ADMIN' || user.role === 'SUPPORT_AGENT';
+  const canClose = isOwner || user.role === 'ADMIN' || user.role === 'SUPPORT_AGENT';
+  const canVote = true; // All authenticated users can vote
+
+  return {
+    canReply,
+    canClose,
+    canVote,
+    isOwner,
+    userRole: user.role,
+  };
 }
