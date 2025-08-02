@@ -239,7 +239,7 @@ const config = {
       "value": "prisma-client-js"
     },
     "output": {
-      "value": "D:\\odoo-punjab\\quickdesk\\generated\\prisma",
+      "value": "/workspaces/quickdesk/generated/prisma",
       "fromEnvVar": null
     },
     "config": {
@@ -248,17 +248,16 @@ const config = {
     "binaryTargets": [
       {
         "fromEnvVar": null,
-        "value": "windows",
+        "value": "debian-openssl-1.1.x",
         "native": true
       }
     ],
     "previewFeatures": [],
-    "sourceFilePath": "D:\\odoo-punjab\\quickdesk\\prisma\\schema.prisma",
+    "sourceFilePath": "/workspaces/quickdesk/prisma/schema.prisma",
     "isCustomOutput": true
   },
   "relativeEnvPaths": {
-    "rootEnvPath": null,
-    "schemaEnvPath": "../../.env"
+    "rootEnvPath": null
   },
   "relativePath": "../../prisma",
   "clientVersion": "6.13.0",
