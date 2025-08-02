@@ -15,7 +15,7 @@ import { ArrowRight, CheckCircle, Users, Clock, Shield, Zap, BarChart3, Headphon
 const LandingPage = () => {
   return (
     <>
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 pt-20">
         {/* Hero Section with Call to Action */}
         <section className="relative overflow-hidden">
           <VortexDemo />
@@ -28,9 +28,7 @@ const LandingPage = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8 }}
               >
-                <Badge className="mb-6 bg-white/20 backdrop-blur-sm text-white border-white/30 px-4 py-2 text-sm font-medium">
-                  ✨ Welcome to QuickDesk - Your Smart Support Solution
-                </Badge>
+                
                 
                 <h1 className="text-5xl md:text-7xl font-bold mb-8">
                   <span className="bg-gradient-to-r from-blue-400 via-purple-400 to-indigo-400 bg-clip-text text-transparent">
@@ -55,7 +53,7 @@ const LandingPage = () => {
                   </Link>
                   
                   <Link href="/home">
-                    <Button variant="outline" size="lg" className="px-8 py-4 text-lg font-semibold rounded-xl border-2 border-white/30 text-white hover:bg-white/10 hover:border-white/50 transition-all duration-300">
+                    <Button variant="outline" size="lg" className="px-8 py-4 text-lg font-semibold rounded-xl border-2 border-white text-blue hover:bg-white hover:text-black transition-all duration-300">
                       View Demo
                     </Button>
                   </Link>
@@ -261,7 +259,7 @@ const LandingPage = () => {
                 </Link>
                 
                 <Link href="/contact">
-                  <Button variant="outline" size="lg" className="border-white/30 text-white hover:bg-white/10 px-8 py-4 text-lg font-semibold rounded-xl transition-all duration-300">
+                  <Button variant="outline" size="lg" className="border-2 border-white text-gray-700 hover:bg-white hover:text-blue-600 px-8 py-4 text-lg font-semibold rounded-xl transition-all duration-300">
                     Talk to Sales
                   </Button>
                 </Link>
