@@ -1,4 +1,4 @@
-"use server"
+"use client";
 
 import React from 'react'
 import { TypewriterEffectSmoothDemo } from '@/components/type-writer';

@@ -7,7 +7,6 @@ import { CarouselDemo } from '@/components/carousel'
 import { AnimatedTestimonialsDemo } from '@/components/testimonials'
 import { CardSpotlightDemo } from '@/components/hover-design'
 import { CardSpotlight } from "@/components/ui/card-spotlight";
-import { DotBackgroundDemo } from '@/components/dot-background';
 import { VortexDemo } from "@/components/call-to-action";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,26 +21,26 @@ const LandingPage = () => {
           <VortexDemo />
           
           {/* Enhanced Hero Content Overlay */}
-          <div className="absolute inset-0 flex items-center justify-center z-10">
+          <div className="absolute inset-0 flex items-center justify-center z-20">
             <div className="text-center px-6 max-w-4xl mx-auto">
               <motion.div
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8 }}
               >
-                <Badge className="mb-6 bg-blue-100 text-blue-700 border-blue-200 px-4 py-2 text-sm font-medium">
+                <Badge className="mb-6 bg-white/20 backdrop-blur-sm text-white border-white/30 px-4 py-2 text-sm font-medium">
                   ✨ Welcome to QuickDesk - Your Smart Support Solution
                 </Badge>
                 
                 <h1 className="text-5xl md:text-7xl font-bold mb-8">
-                  <span className="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
+                  <span className="bg-gradient-to-r from-blue-400 via-purple-400 to-indigo-400 bg-clip-text text-transparent">
                     Streamline
                   </span>
                   <br />
-                  <span className="text-gray-800">Your Support</span>
+                  <span className="text-white">Your Support</span>
                 </h1>
                 
-                <p className="text-xl md:text-2xl text-gray-600 mb-10 leading-relaxed max-w-3xl mx-auto">
+                <p className="text-xl md:text-2xl text-gray-200 mb-10 leading-relaxed max-w-3xl mx-auto">
                   Transform your customer support experience with AI-powered ticketing, 
                   real-time collaboration, and intelligent analytics. Join thousands of teams 
                   delivering exceptional support.
@@ -56,14 +55,14 @@ const LandingPage = () => {
                   </Link>
                   
                   <Link href="/home">
-                    <Button variant="outline" size="lg" className="px-8 py-4 text-lg font-semibold rounded-xl border-2 border-gray-300 hover:border-blue-500 hover:text-blue-600 transition-all duration-300">
+                    <Button variant="outline" size="lg" className="px-8 py-4 text-lg font-semibold rounded-xl border-2 border-white/30 text-white hover:bg-white/10 hover:border-white/50 transition-all duration-300">
                       View Demo
                     </Button>
                   </Link>
                 </div>
                 
                 {/* Trust Indicators */}
-                <div className="mt-12 flex flex-wrap justify-center items-center gap-8 text-gray-500">
+                <div className="mt-12 flex flex-wrap justify-center items-center gap-8 text-gray-300">
                   <div className="flex items-center gap-2">
                     <Users className="h-5 w-5" />
                     <span className="font-medium">10,000+ Teams</span>
@@ -198,11 +197,6 @@ const LandingPage = () => {
               </Link>
             </motion.div>
           </div>
-        </section>
-
-        {/* Original Hero as Secondary Section */}
-        <section className="py-20">
-          <DotBackgroundDemo />
         </section>
 
         {/* Enhanced Testimonials */}
